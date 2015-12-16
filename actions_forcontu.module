@@ -1,0 +1,118 @@
+<?php
+/**
+* @file
+* Módulo Actions Forcontu
+* Este módulo crea acciones y disparadores
+*/
+
+/**
+ * Implements hook_action_info().
+ */
+function actions_forcontu_action_info() {
+  return array(
+    'actions_forcontu_send_email_admin_action' => array(
+      'type' => 'user',
+      'label' => t('Send an email to the administrator when creating or remove a node'),
+      'configurable' => FALSE,
+      'triggers' => array('node_insert', 'node_delete'),
+    ),
+  );
+}
+
+/**
+ * Función que implementa actions_forcontu_send_email_admin_action
+ */
+function actions_forcontu_send_email_admin_action(&$entity, $context = array()) {
+  //envia email al administrador
+  dpm($entity);
+  $to = variable_get('site_mail');
+  $language = $entity->language;
+  $params = array();
+  if ($context['hook'] == 'node_insert') {
+    $params['message'] = t('Se ha creado el nodo ' . $entity->title);
+    $mail = drupal_mail('actions_forcontu', 'email_admin', $to, $language, $params);
+   
+  }
+  if ($context['hook'] == 'node_delete') {
+    $params['message'] = t('Se ha eliminado el nodo ' . $entity->title);
+    $mail = drupal_mail('actions_forcontu', 'email_admin', $to, $language, $params);
+  }
+
+  //Registro del evento
+  dpm($mail);
+  if ($mail['send']) {
+    watchdog('actions_forcontu', t('Se ha enviado email al administrador.'), array(), WATCHDOG_NOTICE);
+  } else {
+    watchdog('actions_forcontu', t('Ha fallado el envío de email al administrador.'), array(), WATCHDOG_NOTICE);
+  }
+}
+
+/**
+ * Implements hook_watchdog().
+ */
+function actions_forcontu_watchdog(array $log_entry) {
+  global $base_url, $language;
+
+  $severity_list = array(
+    WATCHDOG_EMERGENCY => t('Emergency'),
+    WATCHDOG_ALERT     => t('Alert'),
+    WATCHDOG_CRITICAL  => t('Critical'),
+    WATCHDOG_ERROR     => t('Error'),
+    WATCHDOG_WARNING   => t('Warning'),
+    WATCHDOG_NOTICE    => t('Notice'),
+    WATCHDOG_INFO      => t('Info'),
+    WATCHDOG_DEBUG     => t('Debug'),
+  );
+
+  $to = 'marrufat@ya.com';
+  $params = array();
+  $params['subject'] = t('[@site_name] @severity_desc: Alert from your web site', array(
+    '@site_name' => variable_get('site_name', 'Drupal'),
+    '@severity_desc' => $severity_list[$log_entry['severity']],
+  ));
+
+  $params['message']  = "\nSite:         @base_url";
+  $params['message'] .= "\nSeverity:     (@severity) @severity_desc";
+  $params['message'] .= "\nTimestamp:    @timestamp";
+  $params['message'] .= "\nType:         @type";
+  $params['message'] .= "\nIP Address:   @ip";
+  $params['message'] .= "\nRequest URI:  @request_uri";
+  $params['message'] .= "\nReferrer URI: @referer_uri";
+  $params['message'] .= "\nUser:         (@uid) @name";
+  $params['message'] .= "\nLink:         @link";
+  $params['message'] .= "\nMessage:      \n\n@message";
+
+  $params['message'] = t($params['message'], array(
+    '@base_url'      => $base_url,
+    '@severity'      => $log_entry['severity'],
+    '@severity_desc' => $severity_list[$log_entry['severity']],
+    '@timestamp'     => format_date($log_entry['timestamp']),
+    '@type'          => $log_entry['type'],
+    '@ip'            => $log_entry['ip'],
+    '@request_uri'   => $log_entry['request_uri'],
+    '@referer_uri'   => $log_entry['referer'],
+    '@uid'           => $log_entry['user']->uid,
+    '@name'          => $log_entry['user']->name,
+    '@link'          => strip_tags($log_entry['link']),
+    '@message'       => strip_tags($log_entry['message']),
+  ));
+
+   
+}
+
+/**
+ * Implements hook_mail().
+ */
+function actions_forcontu_mail($key, &$message, $params) {
+  $language = $message['language'];
+  $variables = array(
+   '!site-name' => variable_get('site_name', 'Drupal'),
+  );
+
+  switch ($key) {
+    case 'email_admin':
+      $message['subject'] = t('Mensaje enviado por !site-name', $variables);
+      $message['body'][] = check_plain($params['message']);
+      break;
+  }
+}

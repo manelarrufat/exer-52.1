@@ -1,0 +1,6 @@
+name = Actions Forcontu
+description = Módulo para probar acciones y disparadores
+core = 7.x
+files[] = actions_forcontu.module
+package = My modules
+dependencies[] = trigger
