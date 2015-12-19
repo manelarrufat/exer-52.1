@@ -11,9 +11,16 @@
 function actions_forcontu_action_info() {
   return array(
     'actions_forcontu_send_email_admin_action' => array(
-      'type' => 'user',
+      'type' => 'node',
       'label' => t('Send an email to the administrator when creating or remove a node'),
       'configurable' => FALSE,
+      'triggers' => array('node_insert', 'node_delete'),
+    ),
+    'actions_forcontu_counter_action' => array(
+      'type' => 'node',
+      'label' => t('Update counter nodes created and deleted'),
+      'configurable' => TRUE,
+      'behavior' => array('changes_property'),
       'triggers' => array('node_insert', 'node_delete'),
     ),
   );
@@ -24,7 +31,7 @@ function actions_forcontu_action_info() {
  */
 function actions_forcontu_send_email_admin_action(&$entity, $context = array()) {
   //envia email al administrador
-  dpm($entity);
+  //dpm($entity);
   $to = variable_get('site_mail');
   $language = $entity->language;
   $params = array();
@@ -39,12 +46,66 @@ function actions_forcontu_send_email_admin_action(&$entity, $context = array()) 
   }
 
   //Registro del evento
-  dpm($mail);
+  //dpm($mail);
   if ($mail['send']) {
     watchdog('actions_forcontu', t('Se ha enviado email al administrador.'), array(), WATCHDOG_NOTICE);
   } else {
     watchdog('actions_forcontu', t('Ha fallado el envío de email al administrador.'), array(), WATCHDOG_NOTICE);
   }
+}
+
+/**
+ * Función que implementa actions_forcontu_counter_action
+ */
+function actions_forcontu_counter_action(&$entity, $context) {
+  //Buscar en la tabla si el usuario está en ella, si no está insertar nuevo registro con contador a 1
+  //si ya está incrementar por 1 y actualizar
+  $result = db_query('SELECT * FROM {actions_forcontu} WHERE uid=' . $entity->uid);
+  //Si ha encontrado el registro $result->rowCount() valdrá 1, sino valdrá 0
+  if ($result->rowCount() == 0) {
+    db_insert('actions_forcontu')
+      ->fields(array(
+        'uid' => $entity->uid,
+        'counter' => 1,
+      ))
+      ->execute();
+  }
+  else {
+    $record = array();
+    $record = $result->fetchAssoc();
+    $counter = $record['counter'];
+    if ($context['hook'] == 'node_insert') {
+      $counter++;
+    }
+    if ($context['hook'] == 'node_delete') {
+      $counter--;
+    }
+    db_update('actions_forcontu')
+      ->fields(array('counter' => $counter))
+      ->condition('uid', $entity->uid)
+      ->execute();
+  }
+}
+
+/**
+ * Función que implementa el formulario de actions_forcontu_counter_action
+ */
+function actions_forcontu_counter_action_form($context) {
+  $form['counter'] = array(
+    '#title' => t('Reset counter'),
+    '#type' => 'submit',
+    '#value' => t('Reset counter'),
+  );
+  return $form;
+}
+
+function actions_forcontu_counter_action_validate($form, &$form_state) {
+
+}
+
+function actions_forcontu_counter_action_submit($form, &$form_state) {
+  //borramos los elementos de la tabla
+  db_truncate('actions_forcontu')->execute();
 }
 
 /**

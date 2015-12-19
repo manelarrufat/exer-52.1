@@ -1,0 +1,44 @@
+<?php
+/**
+* @file
+* Módulo Actions Forcontu
+* Este módulo crea acciones y disparadores
+*/
+
+/**
+ * Implements hook_install().
+ */
+function actions_forcontu_install() {
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function actions_forcontu_uninstall() {
+}
+
+/**
+ * Implements hook_schema().
+ */
+function actions_forcontu_schema() {
+  $schema['actions_forcontu'] = array(
+    'description' => 'Tabla con el contador de entrada y supresión de nodos de cada usuario',
+    'fields' => array(
+      'uid' => array(
+        'description' => 'Identificador del usuario',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'counter' => array(
+        'description' => 'Contador de nodos creados y eliminados',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('uid'),
+  );
+  return $schema;
+}
