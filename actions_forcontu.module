@@ -23,6 +23,12 @@ function actions_forcontu_action_info() {
       'behavior' => array('changes_property'),
       'triggers' => array('node_insert', 'node_delete'),
     ),
+    'actions_forcontu_reset_action' => array(
+      'type' => 'user',
+      'label' => t('Reset counter'),
+      'configurable' => FALSE,
+      'triggers' => array('counter_trigger'),
+    )
   );
 }
 
@@ -78,13 +84,32 @@ function actions_forcontu_counter_action(&$entity, $context) {
       $counter++;
     }
     if ($context['hook'] == 'node_delete') {
-      $counter--;
+      //$counter--;
+      $counter <= 1 ? $counter = 0 : $counter--;
     }
     db_update('actions_forcontu')
       ->fields(array('counter' => $counter))
       ->condition('uid', $entity->uid)
       ->execute();
+    if ($counter >=5) {
+      drupal_set_message(t('Contador superior a 5'));
+      _actions_forcontu_counter_trigger('counter_trigger', $entity, $context);
+    }
   }
+}
+
+/**
+ * 
+ */
+function actions_forcontu_reset_action(&$entity, $context) {
+  //reseteamos el contador a 0
+  dpm($entity, 'ENTITY');
+  dpm($context, 'CONTEXT');
+  $user = $context['form_values']->uid;
+  db_update('actions_forcontu')
+    ->fields(array('counter' => 0))
+    ->condition('uid', $user)
+    ->execute(); 
 }
 
 /**
@@ -177,3 +202,50 @@ function actions_forcontu_mail($key, &$message, $params) {
       break;
   }
 }
+
+/**
+ * Implements hook_trigger_info().
+ */
+function actions_forcontu_trigger_info() {
+  return array(
+    'user' => array(
+      'counter_trigger' => array(
+        'label' => t('Pone el contador de nodos creados a 0 cuando llega a 5'),
+      ),
+    ),
+  );
+}
+
+/**
+ * Función del trigger counter_trigger
+ */
+function _actions_forcontu_counter_trigger($hook, &$edit, $account, $category = NULL) {
+  
+  static $objects;
+
+  //obtenemos las acciones asignadas al disparador counter_trigger
+  $aids = trigger_get_assigned_actions($hook);
+
+  //prepara el array $context que se pasará a las acciones
+  $context = array(
+    'group' => 'user',
+    'hook' => $hook,
+    'form_values' => &$edit,
+  );
+  //
+  foreach ($aids as $aid => $value) {
+    $type = $value['type'];
+    if ($type !='user') {
+      if (!isset($objects[$type])) {
+        $objects[$type] = _trigger_normalize_user_context($type, $account);
+      }
+      $context['user'] = $account;
+      actions_do($aid, $objects[$type], $context);
+    }
+    else {
+      actions_do($aid, $account, $context, $category);
+    }
+  }
+
+}
+
