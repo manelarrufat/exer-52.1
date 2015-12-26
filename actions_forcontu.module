@@ -54,9 +54,10 @@ function actions_forcontu_send_email_admin_action(&$entity, $context = array()) 
   //Registro del evento
   //dpm($mail);
   if ($mail['send']) {
-    watchdog('actions_forcontu', t('Se ha enviado email al administrador.'), array(), WATCHDOG_NOTICE);
-  } else {
-    watchdog('actions_forcontu', t('Ha fallado el envío de email al administrador.'), array(), WATCHDOG_NOTICE);
+    watchdog('actions_forcontu', 'Se ha enviado email al administrador.', array(), WATCHDOG_NOTICE);
+  } 
+  else {
+    watchdog('actions_forcontu', 'Ha fallado el envío de email al administrador.', array(), WATCHDOG_NOTICE);
   }
 }
 
@@ -183,7 +184,21 @@ function actions_forcontu_watchdog(array $log_entry) {
     '@message'       => strip_tags($log_entry['message']),
   ));
 
-   
+  //dpm($log_entry);
+  //Creamos string con los datos que nos interesan
+  $log_message = $log_entry['timestamp'];
+  $log_message .= '|' . $log_entry['type'];
+  $log_message .= '|' . $log_entry['ip'];
+  $log_message .= '|' . $log_entry['request_uri'];
+  $log_message .= '|' . $log_entry['referer'];
+  $log_message .= '|' . $log_entry['user']->uid;
+  $log_message .= '|' . $log_entry['user']->name;
+  $log_message .= '|' . $log_entry['link'];
+  $log_message .= '|' . $log_entry['message'] . PHP_EOL;
+  //Añadimos strins al fichero, si no existe el fichero se crea.
+  $file = fopen($_SERVER['DOCUMENT_ROOT'] . '/drupal_example.log', 'a');
+  fwrite($file, $log_message);
+  fclose($file);
 }
 
 /**
